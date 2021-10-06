@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PHP Rest API CRUD</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <table id="main" cellspacing="0" border="0">
+        <tr>
+            <td id="header">
+                <h1>PHP REST API CRUD</h1>
+
+                <div id="search-bar">
+                    <label>Search</label>
+                    <input type="text" id="search" autocomplete="0">
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td id="table-form">
+                <form id="addForm">
+                    Name: <input type="text" name="sname" id="sname">
+                    Age : <input type="number" name="sage" id="sage">
+                    Gender: <input type="text" name="sgender" id="sgender">
+                    Country: <input type="text" name="scountry" id="scountry">
+                    <input type="submit" id="save-button" value="Save">
+                </form>
+            </td>
+        </tr>
+        <tr>
+            <td id="table-data">
+                <table width="100%" cellpadding="10px">
+                    <tr>
+                        <th width="40px">Id</th>
+                        <th width="1200px">Name</th>
+                        <th width="50px">Age</th>
+                        <th width="100px">Gender</th>
+                        <th width="120px">Country</th>
+                        <th width="110px">Edit</th>
+                        <th width="70px">Delete</th>
+                    </tr>
+                    <tbody id="load-table">
+                    </tbody>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <div id="error-msg" class="msg"></div>
+    <div id="success-msg" class="msg"></div>
+
+    <!-- POPup Modal For Update -->
+    <div id="modal">
+        <div id="modal-form">
+            <h2>Edit Form</h2>
+            <form action="" id="edit-form">
+                <table cellpadding="10px" width="100%">
+                    <tr>
+                        <td width="90px">Name</td>
+                        <td>
+                            <input type="text" name="sname" id="edit-name">
+                            <input type="text" name="sid" id="edit-id" hidden="">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Age</td>
+                        <td> <input type="number" name="sage" id="edit-age"> </td>
+                    </tr>
+                    <tr>
+                        <td>Gender</td>
+                        <td> <input type="text" name="sgender" id="edit-gender"> </td>
+                    </tr>
+                    <tr>
+                        <td>Country</td>
+                        <td> <input type="text" name="scountry" id="edit-country"> </td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td> <input type="submit" id="edit-submit" value="Update"> </td>
+                    </tr>
+                </table>
+            </form>
+            <div id="close-btn">X</div>
+        </div>
+
+    </div>
+
+    <script src="js/jquery.js"></script>
+    <script>
+        $(document).ready(function () {
+            function loadTable() {
+                $("#load-table").html("");
+                $.ajax({
+                    url: "http://localhost/Rest%20API/all_api.php",
+                    type: "GET",
+                    success: function (data) {
+                        if (data.status == false) {
+                            $("#load-table").append("<tr><td colspan='7'><h2>" + data.message + "</h2></td></tr>")
+                        } else {
+                            $.each(data, function (key, value) {
+                                $("#load-table").append("<tr>"
+                                    + "<td>" + value.id + "</td>"
+                                    + "<td>" + value.name + "</td>"
+                                    + "<td>" + value.age + "</td>"
+                                    + "<td>" + value.gender + "</td>"
+                                    + "<td>" + value.country + "</td>"
+                                    + "<td> <button class='edit-btn' data-eid=" + value.id + " >Edit</button> </td>"
+                                    + "<td> <button class='delete-btn' data-id='" + value.id + "' >Delete</button> </td>"
+                                    + "</tr>");
+                            });
+                        }
+
+                    }
+                });
+            }
+            loadTable();
+            //fetch Single Record: Modal Form
+            $(document).on("click", ".edit-btn", function () {
+                $("#modal").show();
+                var studentId = $(this).data("eid");
+                var obj = { sid: studentId };
+                var myJSON = JSON.stringify(obj);
+                $.ajax({
+                    url: "http://localhost/Rest%20API/single_api.php",
+                    type: "POST",
+                    data: myJSON,
+                    success: function (data) {
+                        $("#edit-id").val(data[0].id);
+                        $("#edit-name").val(data[0].name);
+                        $("#edit-age").val(data[0].age);
+                        $("#edit-gender").val(data[0].gender);
+                        $("#edit-country").val(data[0].country);
+                    }
+                });
+            });
+            //Show Success Or Error Message
+            function message(message, status) {
+                if (status == false) {
+                    $("#error-msg").html(message).slideDown();
+                    $("#success-msg").slideUp();
+                    setTimeout(function () {
+                        $("#error-msg").slideUp("slow");
+                    }, 4000);
+                } else if (status == true) {
+                    $("#success-msg").html(message).slideDown();
+                    $("#error-msg").slideUp();
+                    setTimeout(function () {
+                        $("#success-msg").slideUp("slow")
+                    }, 4000);
+                }
+            }
+            //Function for Form data to JSON Object
+            function jsonData(targetForm) {
+                var arr = $(targetForm).serializeArray();
+                var obj = {};
+                for (var a = 0; a < arr.length; a++) {
+                    if (arr[a].value == "") {
+                        return false;
+                    }
+                    obj[arr[a].name] = arr[a].value;
+                }
+                var json_string = JSON.stringify(obj);
+
+                return json_string;
+            }
+
+            //Hide Modal Box
+            $("#close-btn").on("click", function () {
+                $("#modal").hide();
+            });
+
+            //Insert New Record
+            $("#save-button").on("click", function (e) {
+                e.preventDefault();
+
+                var jsonObj = jsonData("#addForm");
+
+                if (jsonObj == false) {
+                    message("All Fields are Required.", false);
+                } else {
+                    $.ajax({
+                        url: "http://localhost/Rest%20API/insert_api.php",
+                        type: "POST",
+                        data: jsonObj,
+                        success: function (data) {
+                            message(data.message, data.status);
+
+                            if (data.status == true) {
+                                loadTable();
+                                $("#addForm").trigger("reset");
+                            }
+                        }
+                    })
+                }
+            });
+
+            //Update Record
+            $("#edit-submit").on("click", function (e) {
+                e.preventDefault();
+
+                var jsonObj = jsonData("#edit-form");
+
+                if (jsonObj == false) {
+                    message("All Feilds must Required", false);
+                } else {
+                    $.ajax({
+                        url: "http://localhost/Rest%20API/update_api.php",
+                        type: "POST",
+                        data: jsonObj,
+                        success: function (data) {
+                            message(data.message, data.status);
+
+                            if (data.status == true) {
+                                $("#modal").hide();
+                                loadTable();
+                            }
+
+
+                        }
+                    })
+                }
+            })
+
+            //DELETE RECORD
+            $(document).on("click", ".delete-btn", function () {
+                if (confirm("Do you want to really delete this record?")) {
+                    var studentId = $(this).data("id");
+                    var obj = { sid: studentId };
+                    var jsonObj = JSON.stringify(obj);
+                    var row = this;
+
+                    $.ajax({
+                        url: "http://localhost/Rest%20API/delete_api.php",
+                        type: "POST",
+                        data: jsonObj,
+                        success: function (data) {
+                            message(data.message, data.status);
+                            if (data.status == true) {
+                                $(row).closest("tr").fadeOut();
+                            }
+                        }
+                    })
+                }
+            })
+            //Live Search Record
+
+            $("#search").on("keyup", function () {
+                var search_term = $(this).val();
+
+                $("#load-table").html("");
+
+                $.ajax({
+                    url: "http://localhost/Rest%20API/search_api.php?search=" + search_term,
+                    type: "GET",
+                    success: function (data) {
+                        if (data.status == false) {
+                            $("#load-table").append("<tr><td colspan='7'><h2>" + data.message + "</h2></td></tr>")
+                        } else {
+                            $.each(data, function (key, value) {
+                                $("#load-table").append("<tr>"
+                                    + "<td>" + value.name + "</td>"
+                                    + "<td>" + value.age + "</td>"
+                                    + "<td>" + value.gender + "</td>"
+                                    + "<td>" + value.country + "</td>"
+                                    + "<td <button class='edit-btn' data-eid=''" + value.eid + ">Edit</button>  </td>"
+                                    + "<td <button class='delete-btn' data-id=''" + value.id + ">Delete</button>  </td>"
+                                    + "</tr>");
+                            });
+                        }
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>
